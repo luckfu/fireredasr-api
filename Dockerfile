@@ -62,13 +62,10 @@ WORKDIR /app
 
 # --- 關鍵優化點 ---
 # 從構建階段複製已安裝的Python包
-# 路徑已變更，因為我們是安裝到系統的 site-packages 中
-#COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
 COPY --from=builder /usr/local/lib/python3.10/dist-packages /usr/local/lib/python3.10/dist-packages
-# -----------------
 
-# 複製應用代碼
-COPY . .
+# 將 fireredasr-api 子目錄中的所有內容複製到當前工作目錄 /app
+COPY ./fireredasr-api/ .
 
 # 創建必要的目錄
 RUN mkdir -p logs static/tmp
