@@ -23,9 +23,8 @@ RUN ln -s /usr/bin/python3 /usr/bin/python
 # 設置工作目錄
 WORKDIR /app
 
-# --- 修正點 ---
-# 複製 requirements.txt (建置上下文已變更為 fireredasr-api 目錄)
-COPY requirements.txt .
+# 從正確的子目錄 fireredasr-api 複製 requirements.txt
+COPY fireredasr-api/requirements.txt .
 
 # 安裝 Python 依賴
 RUN pip3 install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121 && \
@@ -59,9 +58,8 @@ WORKDIR /app
 # 從構建階段複製已安裝的Python包
 COPY --from=builder /usr/local/lib/python3.10/dist-packages /usr/local/lib/python3.10/dist-packages
 
-# --- 修正點 ---
-# 複製應用程式碼 (建置上下文已變更為 fireredasr-api 目錄)
-COPY . .
+# 從正確的子目錄 fireredasr-api 複製應用程式碼到當前工作目錄
+COPY fireredasr-api/ .
 
 # 創建必要的目錄
 RUN mkdir -p logs static/tmp
