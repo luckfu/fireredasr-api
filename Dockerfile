@@ -1,12 +1,12 @@
-# 多阶段构建 - 构建阶段
+# 多階段構建 - 構建階段
 FROM nvidia/cuda:12.8.0-devel-ubuntu22.04 as builder
 
-# 设置环境变量
+# 設置環境變數
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
-# 安装构建依赖
+# 安裝構建依賴
 RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
@@ -17,30 +17,34 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# 创建符号链接
+# 創建符號連結
 RUN ln -s /usr/bin/python3 /usr/bin/python
 
-# 设置工作目录
+# 設置工作目錄
 WORKDIR /app
 
-# 复制requirements文件
+# 複製requirements文件
 COPY requirements.txt .
 
-# 安装Python依赖到临时目录
-RUN pip3 install --user --no-cache-dir -r requirements.txt && \
-    pip3 install --user --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+# --- 關鍵優化點 ---
+# 將所有 pip 安裝合併到一個 RUN 指令中，並且不安裝到 --user 目錄
+# 這樣可以確保在該層結束前，清除 pip 的暫存檔案，大幅縮小此層的體積
+RUN pip3 install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121 && \
+    pip3 install --no-cache-dir -r requirements.txt && \
+    rm -rf /root/.cache/pip
 
-# 运行时阶段
+# -----------------
+
+# 運行時階段
 FROM nvidia/cuda:12.8.0-runtime-ubuntu22.04
 
-# 设置环境变量
+# 設置環境變數
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
-ENV PATH=/root/.local/bin:$PATH
-ENV PYTHONPATH=/root/.local/lib/python3.10/site-packages:$PYTHONPATH
+# (注意) 因為不再使用 --user 安裝，所以不再需要手動設定 PATH 和 PYTHONPATH
 
-# 只安装运行时必需的依赖
+# 只安裝運行時必需的依賴
 RUN apt-get update && apt-get install -y \
     python3 \
     python3-distutils \
@@ -48,34 +52,35 @@ RUN apt-get update && apt-get install -y \
     libsndfile1 \
     curl \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* \
-    && rm -rf /tmp/* \
-    && rm -rf /var/tmp/*
+    && rm -rf /var/lib/apt/lists/*
 
-# 创建符号链接
+# 創建符號連結
 RUN ln -s /usr/bin/python3 /usr/bin/python
 
-# 设置工作目录
+# 設置工作目錄
 WORKDIR /app
 
-# 从构建阶段复制已安装的Python包
-COPY --from=builder /root/.local /root/.local
+# --- 關鍵優化點 ---
+# 從構建階段複製已安裝的Python包
+# 路徑已變更，因為我們是安裝到系統的 site-packages 中
+COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
+# -----------------
 
-# 复制应用代码
+# 複製應用代碼
 COPY . .
 
-# 创建必要的目录
+# 創建必要的目錄
 RUN mkdir -p logs static/tmp
 
-# 设置权限
+# 設置權限
 RUN chmod +x app.py
 
 # 暴露端口
 EXPOSE 5078
 
-# 健康检查
+# 健康檢查
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:5078/ || exit 1
 
-# 启动命令
+# 啟動命令
 CMD ["python", "app.py"]
