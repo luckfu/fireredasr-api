@@ -8,6 +8,11 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+# (優化 1) - 新增並行控制，避免重複執行浪費資源
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   REGISTRY: docker.io
   IMAGE_NAME: fireredasr-api
@@ -15,6 +20,8 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # (優化 2) - 新增工作逾時設定，防止 job 卡住過久
+    timeout-minutes: 60 
     permissions:
       contents: read
       packages: write
@@ -22,6 +29,18 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+
+    # (優化 3) - 這是最關鍵的一步，用來解決磁碟空間不足的問題
+    - name: 🧹 Free up disk space on the runner
+      run: |
+        echo "Initial disk space:"
+        df -h
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /opt/ghc
+        sudo rm -rf /usr/local/share/boost
+        sudo rm -rf "$AGENT_TOOLSDIR"
+        echo "Disk space after cleanup:"
+        df -h
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
@@ -48,9 +67,12 @@ jobs:
           type=semver,pattern={{major}}.{{minor}}
           type=semver,pattern={{major}}
           type=raw,value=latest,enable={{is_default_branch}}
-          type=raw,value=cuda-12.8,enable={{is_default_branch}}
+          # 這裡我將你的 cuda-12.8 改為 cuda-12.1，以符合你 Dockerfile 的需求
+          # 如果你的目標確實是 12.8，請忽略此註解
+          type=raw,value=cuda-12.1,enable={{is_default_branch}}
 
     - name: Build and push Docker image
+      id: build # 賦予這個 step一個 ID
       uses: docker/build-push-action@v5
       with:
         context: .
