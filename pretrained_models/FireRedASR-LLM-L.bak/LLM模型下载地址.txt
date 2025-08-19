@@ -1,0 +1,17 @@
+模型下载地址
+
+https://huggingface.co/FireRedTeam/FireRedASR-LLM-L/resolve/main/model.pth.tar?download=true
+
+将下载的  model.pth.tar  放到该目录下 pretrained_models/FireRedASR-LLM-L
+
+
+
+再将以下4个链接下载的文件放到 pretrained_models/FireRedASR-LLM-L/Qwen2-7B-Instruct 目录下
+
+https://huggingface.co/Qwen/Qwen2-7B-Instruct/resolve/main/model-00001-of-00004.safetensors?download=true
+
+https://huggingface.co/Qwen/Qwen2-7B-Instruct/resolve/main/model-00002-of-00004.safetensors?download=true
+
+https://huggingface.co/Qwen/Qwen2-7B-Instruct/resolve/main/model-00003-of-00004.safetensors?download=true
+
+https://huggingface.co/Qwen/Qwen2-7B-Instruct/resolve/main/model-00004-of-00004.safetensors?download=true

@@ -1,0 +1,5 @@
+模型下载地址
+
+https://huggingface.co/FireRedTeam/FireRedASR-AED-L/resolve/main/model.pth.tar?download=true
+
+将下载的  model.pth.tar  放到该目录 pretrained_models/FireRedASR-AED-L 下
