@@ -76,7 +76,7 @@ jobs:
       id: build
       uses: docker/build-push-action@v5
       with:
-        context: .
+        context: ./fireredasr-api
         file: ./Dockerfile
         platforms: linux/amd64
         push: ${{ github.event_name != 'pull_request' }}
