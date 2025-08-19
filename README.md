@@ -116,7 +116,13 @@ curl -X POST http://localhost:5078/v1/audio/transcriptions \
 
 ## Docker Hub
 
-Docker Hub 上提供了支持 CUDA 的预构建镜像。
+Docker Hub 上提供了支持 CUDA 的预构建镜像。 
+> docker pull luckfu/fireredasr-api:cuda-12.1
+
+## 阿里云镜像仓库 
+
+> docker pull registry.cn-shanghai.aliyuncs.com/luckfu/fireredasr-api:cuda-12.1
+
 
 ## 许可证
 
