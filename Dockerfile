@@ -23,17 +23,14 @@ RUN ln -s /usr/bin/python3 /usr/bin/python
 # 設置工作目錄
 WORKDIR /app
 
-# 複製requirements文件
-COPY requirements.txt .
+# --- 修正點 ---
+# 從正確的子目錄 fireredasr-api 複製 requirements.txt
+COPY fireredasr-api/requirements.txt .
 
-# --- 關鍵優化點 ---
-# 將所有 pip 安裝合併到一個 RUN 指令中，並且不安裝到 --user 目錄
-# 這樣可以確保在該層結束前，清除 pip 的暫存檔案，大幅縮小此層的體積
+# 安裝 Python 依賴
 RUN pip3 install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121 && \
     pip3 install --no-cache-dir -r requirements.txt && \
     rm -rf /root/.cache/pip
-
-# -----------------
 
 # 運行時階段
 FROM nvidia/cuda:12.8.0-runtime-ubuntu22.04
@@ -42,7 +39,6 @@ FROM nvidia/cuda:12.8.0-runtime-ubuntu22.04
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
-# (注意) 因為不再使用 --user 安裝，所以不再需要手動設定 PATH 和 PYTHONPATH
 
 # 只安裝運行時必需的依賴
 RUN apt-get update && apt-get install -y \
@@ -60,12 +56,12 @@ RUN ln -s /usr/bin/python3 /usr/bin/python
 # 設置工作目錄
 WORKDIR /app
 
-# --- 關鍵優化點 ---
 # 從構建階段複製已安裝的Python包
 COPY --from=builder /usr/local/lib/python3.10/dist-packages /usr/local/lib/python3.10/dist-packages
 
-# 將 fireredasr-api 子目錄中的所有內容複製到當前工作目錄 /app
-COPY ./fireredasr-api/ .
+# --- 修正點 ---
+# 從正確的子目錄 fireredasr-api 複製應用程式碼到當前工作目錄
+COPY fireredasr-api/ .
 
 # 創建必要的目錄
 RUN mkdir -p logs static/tmp
