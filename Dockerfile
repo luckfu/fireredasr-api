@@ -6,7 +6,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
-# 安装系统依赖
+# 安装系统依赖并清理缓存
 RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
@@ -16,7 +16,10 @@ RUN apt-get update && apt-get install -y \
     git \
     wget \
     curl \
-    && rm -rf /var/lib/apt/lists/*
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /tmp/* \
+    && rm -rf /var/tmp/*
 
 # 创建符号链接
 RUN ln -s /usr/bin/python3 /usr/bin/python
@@ -27,11 +30,11 @@ WORKDIR /app
 # 复制requirements文件
 COPY requirements.txt .
 
-# 安装Python依赖
-RUN pip3 install --no-cache-dir -r requirements.txt
-
-# 安装PyTorch GPU版本
-RUN pip3 install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+# 安装Python依赖和PyTorch GPU版本（合并安装以减少层数和空间占用）
+RUN pip3 install --no-cache-dir -r requirements.txt && \
+    pip3 install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121 && \
+    pip3 cache purge && \
+    rm -rf /root/.cache/pip
 
 # 复制应用代码
 COPY . .
