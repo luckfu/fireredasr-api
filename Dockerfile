@@ -23,6 +23,14 @@ RUN ln -s /usr/bin/python3 /usr/bin/python
 # 設置工作目錄
 WORKDIR /app
 
+# --- 增加調試指令 ---
+# 為了調試 "not found" 錯誤，我們先嘗試將整個建置上下文 (build context)
+# 複製到一個臨時目錄中，然後列出其內容。
+# 如果這一步成功，日誌將會顯示 GitHub Actions 傳遞給 Docker 的所有檔案。
+COPY . /tmp/context
+RUN ls -laR /tmp/context
+# ---------------------
+
 # 從正確的子目錄 fireredasr-api 複製 requirements.txt
 COPY fireredasr-api/requirements.txt .
 
