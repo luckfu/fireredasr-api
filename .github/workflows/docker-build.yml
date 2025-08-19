@@ -1,86 +1,92 @@
-# 多階段構建 - 構建階段
-FROM nvidia/cuda:12.8.0-devel-ubuntu22.04 as builder
+name: Build and Push CUDA Docker Image
 
-# 設置環境變數
-ENV DEBIAN_FRONTEND=noninteractive
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
+on:
+  push:
+    branches: [ main, develop ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
 
-# 安裝構建依賴
-RUN apt-get update && apt-get install -y \
-    python3 \
-    python3-pip \
-    python3-dev \
-    git \
-    wget \
-    curl \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+# OPTIMIZATION: Cancel redundant builds on the same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
-# 創建符號連結
-RUN ln -s /usr/bin/python3 /usr/bin/python
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: fireredasr-api
 
-# 設置工作目錄
-WORKDIR /app
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # OPTIMIZATION: Add a timeout to prevent stuck jobs
+    timeout-minutes: 60 
+    permissions:
+      contents: read
+      packages: write
 
-# 複製requirements文件
-COPY requirements.txt .
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
-# --- 關鍵優化點 ---
-# 將所有 pip 安裝合併到一個 RUN 指令中，並且不安裝到 --user 目錄
-# 這樣可以確保在該層結束前，清除 pip 的暫存檔案，大幅縮小此層的體積
-RUN pip3 install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121 && \
-    pip3 install --no-cache-dir -r requirements.txt && \
-    rm -rf /root/.cache/pip
+    # CRITICAL FIX: Free up disk space to prevent "No space left on device" error
+    - name: Free up disk space on the runner
+      run: |
+        echo "Initial disk space:"
+        df -h
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /opt/ghc
+        sudo rm -rf /usr/local/share/boost
+        sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+        echo "Disk space after cleanup:"
+        df -h
 
-# -----------------
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      with:
+        platforms: linux/amd64
 
-# 運行時階段
-FROM nvidia/cuda:12.8.0-runtime-ubuntu22.04
+    - name: Log in to Docker Hub
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
 
-# 設置環境變數
-ENV DEBIAN_FRONTEND=noninteractive
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
-# (注意) 因為不再使用 --user 安裝，所以不再需要手動設定 PATH 和 PYTHONPATH
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}}
+          type=raw,value=latest,enable={{is_default_branch}}
+          # NOTE: Changed cuda-12.8 to cuda-12.1 to match your initial error log.
+          # Feel free to change this back if 12.8 is intended.
+          type=raw,value=cuda-12.1,enable={{is_default_branch}}
 
-# 只安裝運行時必需的依賴
-RUN apt-get update && apt-get install -y \
-    python3 \
-    python3-distutils \
-    ffmpeg \
-    libsndfile1 \
-    curl \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    - name: Build and push Docker image
+      # OPTIMIZATION: Add an ID to this step for reliable output access
+      id: build
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile
+        platforms: linux/amd64
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        build-args: |
+          BUILDKIT_INLINE_CACHE=1
 
-# 創建符號連結
-RUN ln -s /usr/bin/python3 /usr/bin/python
-
-# 設置工作目錄
-WORKDIR /app
-
-# --- 關鍵優化點 ---
-# 從構建階段複製已安裝的Python包
-# 路徑已變更，因為我們是安裝到系統的 site-packages 中
-COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
-# -----------------
-
-# 複製應用代碼
-COPY . .
-
-# 創建必要的目錄
-RUN mkdir -p logs static/tmp
-
-# 設置權限
-RUN chmod +x app.py
-
-# 暴露端口
-EXPOSE 5078
-
-# 健康檢查
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:5078/ || exit 1
-
-# 啟動命令
-CMD ["python", "app.py"]
+    - name: Image digest
+      if: github.event_name != 'pull_request'
+      run: echo ${{ steps.build.outputs.digest }}
