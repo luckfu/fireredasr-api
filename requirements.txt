@@ -1,0 +1,13 @@
+cn2an>=0.5.23
+kaldiio>=2.18.0
+kaldi_native_fbank>=1.15
+numpy>=1.26.1
+peft>=0.13.2
+torch>=2.0.0
+transformers>=4.46.3
+faster-whisper
+flask
+waitress
+flask_cors
+pydub
+sentencepiece
