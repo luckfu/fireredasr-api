@@ -63,7 +63,8 @@ WORKDIR /app
 # --- 關鍵優化點 ---
 # 從構建階段複製已安裝的Python包
 # 路徑已變更，因為我們是安裝到系統的 site-packages 中
-COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
+#COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
+COPY --from=builder /usr/local/lib/python3.10/dist-packages /usr/local/lib/python3.10/dist-packages
 # -----------------
 
 # 複製應用代碼
