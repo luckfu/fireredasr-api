@@ -1,4 +1,4 @@
-name: Build and Push CUDA Docker Image
+name: Build and Push Docker Image
 
 on:
   push:
@@ -8,7 +8,6 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
-# OPTIMIZATION: Cancel redundant builds on the same branch
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -20,7 +19,6 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # OPTIMIZATION: Add a timeout to prevent stuck jobs
     timeout-minutes: 60 
     permissions:
       contents: read
@@ -30,15 +28,11 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # CRITICAL FIX: Free up disk space to prevent "No space left on device" error
     - name: Free up disk space on the runner
       run: |
         echo "Initial disk space:"
         df -h
-        sudo rm -rf /usr/share/dotnet
-        sudo rm -rf /opt/ghc
-        sudo rm -rf /usr/local/share/boost
-        sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+        sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost "$AGENT_TOOLSDIRECTORY"
         echo "Disk space after cleanup:"
         df -h
 
@@ -55,11 +49,23 @@ jobs:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
 
+    # --- 新增步驟：登入阿里雲容器登錄檔 ---
+    - name: Log in to Aliyun Container Registry
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ secrets.ALIYUN_REGISTRY }}
+        username: ${{ secrets.ALIYUN_USERNAME }}
+        password: ${{ secrets.ALIYUN_PASSWORD }}
+
     - name: Extract metadata
       id: meta
       uses: docker/metadata-action@v5
       with:
-        images: ${{ env.REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}
+        # --- 修改點：同時為兩個倉庫產生映像檔名稱 ---
+        images: |
+          ${{ env.REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}
+          ${{ secrets.ALIYUN_REGISTRY }}/${{ env.IMAGE_NAME }}
         tags: |
           type=ref,event=branch
           type=ref,event=pr
@@ -67,15 +73,9 @@ jobs:
           type=semver,pattern={{major}}.{{minor}}
           type=semver,pattern={{major}}
           type=raw,value=latest,enable={{is_default_branch}}
-          # NOTE: Changed cuda-12.8 to cuda-12.1 to match your initial error log.
-          # Feel free to change this back if 12.8 is intended.
           type=raw,value=cuda-12.1,enable={{is_default_branch}}
-          
-    - name: 🧐 List files in workspace for debugging
-      run: ls -laR
         
     - name: Build and push Docker image
-      # OPTIMIZATION: Add an ID to this step for reliable output access
       id: build
       uses: docker/build-push-action@v5
       with:
