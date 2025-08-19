@@ -70,7 +70,10 @@ jobs:
           # NOTE: Changed cuda-12.8 to cuda-12.1 to match your initial error log.
           # Feel free to change this back if 12.8 is intended.
           type=raw,value=cuda-12.1,enable={{is_default_branch}}
-
+          
+    - name: 🧐 List files in workspace for debugging
+      run: ls -laR
+        
     - name: Build and push Docker image
       # OPTIMIZATION: Add an ID to this step for reliable output access
       id: build
