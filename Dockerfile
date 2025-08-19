@@ -23,16 +23,9 @@ RUN ln -s /usr/bin/python3 /usr/bin/python
 # 設置工作目錄
 WORKDIR /app
 
-# --- 增加調試指令 ---
-# 為了調試 "not found" 錯誤，我們先嘗試將整個建置上下文 (build context)
-# 複製到一個臨時目錄中，然後列出其內容。
-# 如果這一步成功，日誌將會顯示 GitHub Actions 傳遞給 Docker 的所有檔案。
-COPY . /tmp/context
-RUN ls -laR /tmp/context
-# ---------------------
-
-# 從正確的子目錄 fireredasr-api 複製 requirements.txt
-COPY fireredasr-api/requirements.txt .
+# --- 修正點 ---
+# 直接從根目錄複製 requirements.txt
+COPY requirements.txt .
 
 # 安裝 Python 依賴
 RUN pip3 install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121 && \
@@ -66,8 +59,9 @@ WORKDIR /app
 # 從構建階段複製已安裝的Python包
 COPY --from=builder /usr/local/lib/python3.10/dist-packages /usr/local/lib/python3.10/dist-packages
 
-# 從正確的子目錄 fireredasr-api 複製應用程式碼到當前工作目錄
-COPY fireredasr-api/ .
+# --- 修正點 ---
+# 直接從根目錄複製所有應用程式碼
+COPY . .
 
 # 創建必要的目錄
 RUN mkdir -p logs static/tmp
