@@ -1,6 +1,6 @@
 # FireRedASR API
 
-支持 NVIDIA CUDA 的FireRedASR语音识别 API 服务。
+FireRedASR语音识别模型的 API 服务。
 
 ## 功能特性
 
@@ -18,19 +18,19 @@
 
 ```
 pretrained_models/
-├── FireRedASR-AED-L/
-│   ├── model.pth.tar          # 从 HuggingFace 下载
+├── FireRedASR-AED-L/         # 从 HuggingFace 下载
+│   ├── model.pth.tar         # 不要解压，直接使用
 │   ├── cmvn.ark
 │   ├── cmvn.txt
 │   ├── config.yaml
 │   ├── dict.txt
 │   └── train_bpe1000.model
-└── FireRedASR-LLM-L/
-    ├── model.pth.tar          # 从 HuggingFace 下载
+└── FireRedASR-LLM-L/         # 从 HuggingFace 下载
+    ├── model.pth.tar         # 不要解压，直接使用
     ├── cmvn.ark
     ├── cmvn.txt
     ├── config.yaml
-    └── Qwen2-7B-Instruct/
+    └── Qwen2-7B-Instruct/    # 从 HuggingFace 下载
         ├── model-00001-of-00004.safetensors
         ├── model-00002-of-00004.safetensors
         ├── model-00003-of-00004.safetensors
@@ -40,17 +40,14 @@ pretrained_models/
 ### 模型下载链接
 
 **AED 模型：**
-- 从以下地址下载 `model.pth.tar`：https://huggingface.co/FireRedTeam/FireRedASR-AED-L/resolve/main/model.pth.tar
+- 从以下地址下载 `model.pth.tar`：https://huggingface.co/FireRedTeam/FireRedASR-AED-L
 - 将其放置在 `pretrained_models/FireRedASR-AED-L/` 目录中
 
 **LLM 模型：**
-- 从以下地址下载 `model.pth.tar`：https://huggingface.co/FireRedTeam/FireRedASR-LLM-L/resolve/main/model.pth.tar
+- 从以下地址下载 `model.pth.tar`：https://huggingface.co/FireRedTeam/FireRedASR-LLM-L
 - 将其放置在 `pretrained_models/FireRedASR-LLM-L/` 目录中
 - 下载 Qwen2-7B-Instruct 模型文件并将它们放置在 `pretrained_models/FireRedASR-LLM-L/Qwen2-7B-Instruct/` 目录中：
-  - https://huggingface.co/Qwen/Qwen2-7B-Instruct/resolve/main/model-00001-of-00004.safetensors
-  - https://huggingface.co/Qwen/Qwen2-7B-Instruct/resolve/main/model-00002-of-00004.safetensors
-  - https://huggingface.co/Qwen/Qwen2-7B-Instruct/resolve/main/model-00003-of-00004.safetensors
-  - https://huggingface.co/Qwen/Qwen2-7B-Instruct/resolve/main/model-00004-of-00004.safetensors
+
 
 ## 快速开始
 
@@ -63,7 +60,7 @@ docker build -t fireredasr-api .
 # 运行容器并映射模型目录
 docker run --gpus all -p 5078:5078 \
   -v /path/to/your/pretrained_models:/app/pretrained_models \
-  fireredasr-api
+  fireredasr-api:latest
 ```
 
 **注意：** 请将 `/path/to/your/pretrained_models` 替换为您主机上模型目录的实际路径。模型将被映射到容器内的 `/app/pretrained_models` 目录。
@@ -105,7 +102,8 @@ curl -X POST http://localhost:5078/v1/audio/transcriptions \
 ```bash
 curl -X POST http://localhost:5078/v1/audio/transcriptions \
   -F "file=@audio.wav" \
-  -F "model=LLM"
+  -F "model=LLM" \
+  -F "response_format=json"
 ```
 
 
